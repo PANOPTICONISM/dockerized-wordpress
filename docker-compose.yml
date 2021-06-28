@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  nginx:
+    build:
+      context: ./nginx/
+      dockerfile: Dockerfile
+    container_name: nginx_dev
+    restart: unless-stopped
+    links:
+      - db
+      - wordpress
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - bridge
+
+  wordpress:
+    image: wordpress:5.7.1-php8.0-fpm-alpine
+    container_name: wordpress_dev
+    restart: unless-stopped
+    links:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: ${WORDPRESS_HOST}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_TABLE_PREFIX: wp_
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - bridge
+
+  db:
+    image: mysql:latest
+    container_name: mysql_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      # - ./schema:/docker-entrypoint-initdb.d
+      - db:/var/lib/mysql
+    env_file:
+      - ./variables.env
+    networks:
+      - bridge
+
+  phpmyadmin:
+    links:
+      - db
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_dev
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      UPLOAD_LIMIT: 10G
+      MAX_EXECUTION_TIME: 1000
+    networks:
+      - bridge
+
+networks:
+  bridge:
+    driver: bridge
+
+volumes:
+  wordpress:
+  db:
